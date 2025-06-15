@@ -2,14 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using VirtualBox;
 
 namespace VBoxWpfApp
 {
     public static class VMService
     {
+        private static readonly IVirtualBox _virtualBox = new VirtualBox.VirtualBox();
         private static readonly string LogFilePath = "log.txt";
-        private static IVirtualBox _virtualBox = new VirtualBox.VirtualBox();
+        private static readonly string HistoryFilePath = "history.json";
 
         public static List<VmModel> GetAllMachines()
         {
@@ -24,7 +26,7 @@ namespace VBoxWpfApp
 
         public static async Task StartVM(string name)
         {
-            await Task.Run(() =>
+            await ExecuteAndLog(name, "запущена", async () =>
             {
                 IMachine machine = _virtualBox.FindMachine(name);
                 if (machine == null) return;
@@ -35,7 +37,6 @@ namespace VBoxWpfApp
                     machine.LockMachine((Session)session, LockType.LockType_Write);
                     IConsole console = session.Console;
                     console.PowerUp();
-                    WriteLog($"ВМ '{name}' запущена");
                 }
                 finally
                 {
@@ -46,7 +47,7 @@ namespace VBoxWpfApp
 
         public static async Task StopVM(string name)
         {
-            await Task.Run(() =>
+            await ExecuteAndLog(name, "остановлена", async () =>
             {
                 IMachine machine = _virtualBox.FindMachine(name);
                 if (machine == null) return;
@@ -57,7 +58,6 @@ namespace VBoxWpfApp
                     machine.LockMachine((Session)session, LockType.LockType_Shared);
                     IConsole console = session.Console;
                     console.PowerDown();
-                    WriteLog($"ВМ '{name}' остановлена");
                 }
                 finally
                 {
@@ -68,7 +68,7 @@ namespace VBoxWpfApp
 
         public static async Task PauseVM(string name)
         {
-            await Task.Run(() =>
+            await ExecuteAndLog(name, "приостановлена", async () =>
             {
                 IMachine machine = _virtualBox.FindMachine(name);
                 if (machine == null) return;
@@ -79,7 +79,6 @@ namespace VBoxWpfApp
                     machine.LockMachine((Session)session, LockType.LockType_Shared);
                     IConsole console = session.Console;
                     console.Pause();
-                    WriteLog($"ВМ '{name}' приостановлена");
                 }
                 finally
                 {
@@ -90,7 +89,7 @@ namespace VBoxWpfApp
 
         public static async Task ResumeVM(string name)
         {
-            await Task.Run(() =>
+            await ExecuteAndLog(name, "возобновила работу", async () =>
             {
                 IMachine machine = _virtualBox.FindMachine(name);
                 if (machine == null) return;
@@ -101,13 +100,36 @@ namespace VBoxWpfApp
                     machine.LockMachine((Session)session, LockType.LockType_Shared);
                     IConsole console = session.Console;
                     console.Resume();
-                    WriteLog($"ВМ '{name}' возобновила работу");
                 }
                 finally
                 {
                     session.UnlockMachine();
                 }
             });
+        }
+
+        private static async Task ExecuteAndLog(string name, string action, Func<Task> func)
+        {
+            await Task.Run(() =>
+            {
+                func();
+                string msg = $"ВМ '{name}' {action}";
+                WriteLog(msg);
+                SaveHistory(msg);
+                ToastHelper.ShowToast(msg);
+            });
+        }
+
+        private static void SaveHistory(string message)
+        {
+            var history = new List<string>();
+            if (File.Exists(HistoryFilePath))
+            {
+                history = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(HistoryFilePath)) ?? new List<string>();
+            }
+
+            history.Add($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {message}");
+            File.WriteAllText(HistoryFilePath, JsonConvert.SerializeObject(history, Formatting.Indented));
         }
 
         public static string GetMachineStateDescription(MachineState state)
