@@ -7,7 +7,7 @@ namespace VBoxWpfApp
 {
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        private List<VmModel> _vmList = new List<VmModel>();
+        //private List<VmModel> _vmList = new List<VmModel>();
         private VmModel _selectedVm;
 
         public MainWindow()
@@ -17,15 +17,15 @@ namespace VBoxWpfApp
             LoadMachines();
         }
 
-        public List<VmModel> VmList
-        {
-            get => _vmList;
-            set
-            {
-                _vmList = value;
-                OnPropertyChanged();
-            }
-        }
+        //public List<VmModel> VmList
+        //{
+        //    get => _vmList;
+        //    set
+        //    {
+        //        _vmList = value;
+        //        OnPropertyChanged();
+        //    }
+        //}
 
         public VmModel SelectedVm
         {
@@ -39,7 +39,10 @@ namespace VBoxWpfApp
 
         private void LoadMachines()
         {
-            VmList = VMService.GetAllMachines();
+            //VmList = VMService.GetAllMachines();
+            //MachineList.ItemsSource = VmList;
+            MachineList.ItemsSource = VMService.GetAllMachines();
+
         }
 
         private async void Start_Click(object sender, RoutedEventArgs e)
