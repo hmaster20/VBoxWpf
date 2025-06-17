@@ -1,34 +1,77 @@
 ﻿<Window x:Class="VBoxWpfApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VirtualBox Manager" Height="600" Width="900">
+        Title="VirtualBox Manager" Height="700" Width="1000"
+        Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
+        Foreground="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"
+        WindowStartupLocation="CenterScreen">
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Выбор ВМ -->
-        <ComboBox x:Name="MachineList" 
-                  DisplayMemberPath="Name"
-                  SelectedItem="{Binding SelectedVm}" 
-                  HorizontalAlignment="Left"
-                  VerticalAlignment="Top"
-                  Width="300"
-                  Grid.Row="0"/>
+        <StackPanel Orientation="Horizontal" Grid.Row="0">
+            <!-- <Button Content="Переключить тему" Click="ToggleTheme_Click" Width="119" Margin="5,5,5,4.8"/> -->
+            <Button Content="Переключить тему" Click="ToggleTheme_Click" HorizontalAlignment="Right" Margin="5"/>
+        </StackPanel>
+
+        <!-- Фильтры -->
+        <StackPanel Orientation="Horizontal" Grid.Row="1">
+
+            <!-- Выбор ВМ -->
+            <ComboBox x:Name="MachineList"
+                DisplayMemberPath="Name"
+                ItemsSource="{Binding VmList}"
+                SelectedItem="{Binding SelectedVm, Mode=TwoWay}"
+                SelectionChanged="MachineList_SelectionChanged"
+                Width="300"
+                Grid.Row="1" Margin="5"/>
+
+
+            <!-- <ComboBox x:Name="MachineList" 
+                    DisplayMemberPath="Name" 
+                    SelectedValuePath="Name" 
+                    HorizontalAlignment="Left" 
+                    VerticalAlignment="Top" 
+                    Width="300"
+                    Grid.Row="1" Margin="5"/> -->
+
+            <!-- TextBox с эмуляцией Placeholder -->
+            <TextBox x:Name="FilterName" 
+                     Text="Фильтр по имени..." 
+                     GotFocus="FilterName_GotFocus" 
+                     LostFocus="FilterName_LostFocus"
+                     Width="147" 
+                     Margin="5"/>
+
+            <!-- Фильтр по состоянию -->
+            <ComboBox x:Name="FilterState" Width="150" Margin="5">
+                <ComboBoxItem Content="Все"/>
+                <ComboBoxItem Content="Запущена"/>
+                <ComboBoxItem Content="Выключена"/>
+                <ComboBoxItem Content="Приостановлена"/>
+            </ComboBox>
+
+            <!-- Кнопка фильтрации -->
+            <Button Content="Применить фильтр" Click="ApplyFilter_Click" Margin="5"/>
+        </StackPanel>
+
 
         <!-- Информация о ВМ -->
-        <GroupBox Header="Информация о ВМ" Grid.Row="1" Margin="0,10,0,0">
+        <GroupBox Header="Информация о ВМ" Grid.Row="3" Margin="0,10,0,0">
             <StackPanel Orientation="Vertical">
                 <TextBlock Text="{Binding SelectedVm.Name}" FontWeight="Bold" FontSize="16"/>
                 <TextBlock Text="{Binding SelectedVm.Description}"/>
                 <TextBlock Text="{Binding SelectedVm.OSTypeId}"/>
                 <TextBlock Text="{Binding SelectedVm.CPUs}"/>
                 <TextBlock Text="{Binding SelectedVm.CPUUsagePercent}"/>
-                <TextBlock Text="{Binding SelectedVm.CPUModes}"/>
-                <TextBlock Text="{Binding SelectedVm.MemorySize}"/>
+                <TextBlock Text="{Binding SelectedVm.MemorySizeMB}"/>
                 <TextBlock Text="{Binding SelectedVm.HDDSizeGB}"/>
                 <TextBlock Text="{Binding SelectedVm.EthernetCount}"/>
                 <TextBlock Text="Состояние:"/>
@@ -37,19 +80,26 @@
         </GroupBox>
 
         <!-- Кнопки управления -->
-        <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="0,10,0,0">
+        <StackPanel Orientation="Horizontal" Grid.Row="4" Margin="0,10,0,0">
             <Button Content="Запустить" Click="Start_Click" Width="100" Margin="5"/>
             <Button Content="Остановить" Click="Stop_Click" Width="100" Margin="5"/>
             <Button Content="Приостановить" Click="Pause_Click" Width="100" Margin="5"/>
             <Button Content="Возобновить" Click="Resume_Click" Width="100" Margin="5"/>
-            <ProgressBar x:Name="ProgressIndicator" IsIndeterminate="True" Visibility="Collapsed" Width="150" Margin="10,0"/>
+            <!-- <Button Content="Тема: Тёмная" Click="ToggleTheme_Click" Width="120" Margin="5"/> -->
+            <ProgressBar x:Name="ProgressIndicator" 
+                         IsIndeterminate="True" 
+                         Visibility="Collapsed" 
+                         Width="150" 
+                         Margin="10"/>
         </StackPanel>
 
         <!-- Лог действий -->
         <TextBox x:Name="LogOutput" 
                  IsReadOnly="True" 
-                 Grid.Row="3"
+                 Grid.Row="5"
                  Margin="0,10,0,0"
-                 VerticalScrollBarVisibility="Auto"/>
+                 VerticalScrollBarVisibility="Auto"
+                 Height="100"/>
+
     </Grid>
 </Window>
