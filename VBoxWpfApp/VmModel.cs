@@ -11,8 +11,10 @@ namespace VBoxWpfApp
         public string Description { get; set; }
         public string OSTypeId { get; set; }
         public int CPUs { get; set; }
-        public string CPUUsagePercent => $"{CPUs * 50}%"; // Условное значение
-        public string CPUModes => $"PAE: {(HasPAE ? "Да" : "Нет")}, VT-x: {(HasVtX ? "Да" : "Нет")}"; // Пример
+
+        //VirtualBox COM API напрямую нет метода
+        //public string CPUUsagePercent => $"{CPUs * 50}%"; // Условное значение | => $"{new Random().Next(0, 100)}%"; // Заглушка
+        public string CPUModes => $"PAE: {(HasPAE ? "Да" : "Нет")}, VT-x: {(HasVtX ? "Да" : "Нет")}, NestedPaging: {(HasPAG ? "Да" : "Нет")}"; // Пример
         public long MemorySizeMB { get; set; }
         public string MemorySize => $"{MemorySizeMB} MB";
         public string HDDSizeGB => $"{(HDDSizeBytes / 1_000_000_000)} GB";
@@ -55,6 +57,7 @@ namespace VBoxWpfApp
                 Description = machine.Description,
                 OSTypeId = machine.OSTypeId,
                 CPUs = (int)machine.CPUCount,
+                //CPUUsagePercent = 
                 MemorySizeMB = (int)machine.MemorySize,
                 HDDSizeBytes = (long)totalSize,
                 HasPAE = machine.GetCPUProperty(CPUPropertyType.CPUPropertyType_PAE) == 1,
@@ -67,22 +70,6 @@ namespace VBoxWpfApp
                 //https://pythonhosted.org/pyvbox/virtualbox/library.html
             };
 
-
-            //return new VmModel
-            //{
-            //    Name = machine.Name,
-            //    Description = machine.Description,
-            //    OSTypeId = machine.OSTypeId,
-            //    CPUs = (int)machine.CPUCount,
-            //    MemorySizeMB = (int)machine.MemorySize,
-
-            //    HDDSizeBytes = 0,
-            //    HasPAE = false,
-            //    HasVtX = machine.GetHWVirtExProperty(HWVirtExPropertyType.HWVirtExPropertyType_EnableVPID),
-
-            //    EthernetAdapterCount = 0,
-            //    State = machine.State
-            //};
         }
     }
 }
