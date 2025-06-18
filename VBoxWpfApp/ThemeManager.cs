@@ -10,67 +10,31 @@ namespace VBoxWpfApp
 
         public static bool IsDarkTheme => _isDarkTheme;
 
-        /// <summary>
-        /// Применяет указанную тему
-        /// </summary>
         public static void ApplyTheme(string themeName)
         {
             try
             {
-                // Очистка текущих стилей
-                // Application.Current.Resources.Clear();
+                // Очистка текущих словарей ресурсов
                 Application.Current.Resources.MergedDictionaries.Clear();
 
-
-                //string themePath = $"Themes/{themeName}.xaml";
-                //Console.WriteLine("Загружаем тему по пути: " + themePath);
-                //MessageBox.Show("Загружаем тему по пути: " + themePath);
-
-                //string path = $"Themes/{themeName}.xaml";
-                //Uri uri = new Uri(path, UriKind.Relative);
-
-                //bool fileExists = System.IO.File.Exists(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path));
-                //if (!fileExists)
-                //{
-                //    MessageBox.Show($"Файл темы не найден: {path}");
-                //    return;
-                //}
-
-
-                //string themesDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Themes");
-                //if (Directory.Exists(themesDir))
-                //{
-                //    foreach (var file in Directory.GetFiles(themesDir, "*.xaml"))
-                //    {
-                //        MessageBox.Show("Найден файл темы: " + file);
-                //    }
-                //}
-                //else
-                //{
-                //    MessageBox.Show("Папка Themes не найдена!");
-                //}
-
-                //string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                //Console.WriteLine("Базовый каталог: " + baseDir);
-                //string testPath = Path.Combine(baseDir, "Themes\\DarkTheme.xaml");
-                //Console.WriteLine("Проверяемый путь: " + testPath);
-                //Console.WriteLine("Существует файл: " + File.Exists(testPath));
-
-
+                // Формируем путь к файлу темы
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string FullPath = Path.Combine(baseDir, $"Themes\\{themeName}.xaml");
+                string themePath = Path.Combine(baseDir, "Themes", $"{themeName}.xaml");
 
+                // Проверяем существование файла
+                if (!File.Exists(themePath))
+                {
+                    MessageBox.Show($"Файл темы не найден: {themePath}");
+                    return;
+                }
+
+                // Загружаем словарь ресурсов
                 var themeDict = new ResourceDictionary
                 {
-                    //Source = new Uri($"{themeName}.xaml", UriKind.Relative)
-                    //Source = new Uri($"Themes/{themeName}.xaml", UriKind.Relative)
-                    Source = new Uri(FullPath)
+                    Source = new Uri(themePath, UriKind.Absolute)
                 };
 
                 Application.Current.Resources.MergedDictionaries.Add(themeDict);
-
-
-
             }
             catch (Exception ex)
             {
@@ -78,9 +42,6 @@ namespace VBoxWpfApp
             }
         }
 
-        /// <summary>
-        /// Переключает текущую тему (светлая/тёмная)
-        /// </summary>
         public static void ToggleTheme()
         {
             string nextTheme = _isDarkTheme ? "LightTheme" : "DarkTheme";
@@ -88,18 +49,12 @@ namespace VBoxWpfApp
             _isDarkTheme = !_isDarkTheme;
         }
 
-        /// <summary>
-        /// Сохраняет текущую тему в настройках
-        /// </summary>
         public static void SaveCurrentTheme()
         {
             Properties.Settings.Default.Theme = _isDarkTheme ? "DarkTheme" : "LightTheme";
             Properties.Settings.Default.Save();
         }
 
-        /// <summary>
-        /// Загружает последнюю сохранённую тему
-        /// </summary>
         public static void LoadSavedTheme()
         {
             string savedTheme = Properties.Settings.Default.Theme ?? "DarkTheme";
