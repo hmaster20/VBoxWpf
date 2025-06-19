@@ -1,11 +1,8 @@
-﻿// Убедитесь, что все эти using присутствуют
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Threading; // Для DispatcherTimer
-using System.Linq; // Для AsEnumerable()
-using System;
 
 namespace VBoxWpfApp
 {
@@ -54,18 +51,20 @@ namespace VBoxWpfApp
             //ThemeManager.IsDarkTheme = savedTheme == "DarkTheme";
         }
 
-   private void ToggleTheme_Click(object sender, RoutedEventArgs e)
-    {
-        ThemeManager.ToggleTheme(); // Переключаем тему
-        ThemeManager.SaveCurrentTheme(); // Сохраняем выбор
-    }
-
-        private void LoadMachines()
+        private void ToggleTheme_Click(object sender, RoutedEventArgs e)
         {
-            var machines = VMService.GetAllMachines();
+            ThemeManager.ToggleTheme(); // Переключаем тему
+            ThemeManager.SaveCurrentTheme(); // Сохраняем выбор
+        }
+
+
+        private async void LoadMachines()
+        {
+            var machines = await Task.Run(() => VMService.GetAllMachines());
             VmList = new List<VmModel>(machines);
             MachineList.ItemsSource = VmList;
         }
+
 
         private void MachineList_SelectionChanged(object sender, RoutedEventArgs e)
         {
@@ -101,24 +100,49 @@ namespace VBoxWpfApp
             // Здесь реализуйте логику фильтрации
         }
 
-        private void Start_Click(object sender, RoutedEventArgs e)
+
+        private async void Start_Click(object sender, RoutedEventArgs e)
         {
-            // Реализация запуска ВМ
+            if (SelectedVm != null)
+            {
+                ProgressIndicator.Visibility = Visibility.Visible;
+                await VMService.StartVM(SelectedVm.Name);
+                ProgressIndicator.Visibility = Visibility.Collapsed;
+                LoadMachines(); // Обновляем список
+            }
         }
 
-        private void Stop_Click(object sender, RoutedEventArgs e)
+        private async void Stop_Click(object sender, RoutedEventArgs e)
         {
-            // Реализация остановки ВМ
+            if (SelectedVm != null)
+            {
+                ProgressIndicator.Visibility = Visibility.Visible;
+                await VMService.StopVM(SelectedVm.Name);
+                ProgressIndicator.Visibility = Visibility.Collapsed;
+                LoadMachines();
+            }
         }
 
-        private void Pause_Click(object sender, RoutedEventArgs e)
+        private async void Pause_Click(object sender, RoutedEventArgs e)
         {
-            // Реализация паузы ВМ
+            if (SelectedVm != null)
+            {
+                ProgressIndicator.Visibility = Visibility.Visible;
+                await VMService.PauseVM(SelectedVm.Name);
+                ProgressIndicator.Visibility = Visibility.Collapsed;
+                LoadMachines();
+            }
         }
 
-        private void Resume_Click(object sender, RoutedEventArgs e)
+        private async void Resume_Click(object sender, RoutedEventArgs e)
         {
-            // Реализация возобновления ВМ
+            if (SelectedVm != null)
+            {
+                ProgressIndicator.Visibility = Visibility.Visible;
+                await VMService.ResumeVM(SelectedVm.Name);
+                ProgressIndicator.Visibility = Visibility.Collapsed;
+                LoadMachines();
+            }
         }
 
 

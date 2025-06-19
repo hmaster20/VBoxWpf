@@ -1,6 +1,4 @@
-﻿using System;
-using VirtualBox;
-using System.Linq;
+﻿using System.Threading.Tasks;
 using VirtualBox;
 
 namespace VBoxWpfApp
@@ -11,10 +9,8 @@ namespace VBoxWpfApp
         public string Description { get; set; }
         public string OSTypeId { get; set; }
         public int CPUs { get; set; }
-
-        //VirtualBox COM API напрямую нет метода
-        //public string CPUUsagePercent => $"{CPUs * 50}%"; // Условное значение | => $"{new Random().Next(0, 100)}%"; // Заглушка
-        public string CPUModes => $"PAE: {(HasPAE ? "Да" : "Нет")}, VT-x: {(HasVtX ? "Да" : "Нет")}, NestedPaging: {(HasPAG ? "Да" : "Нет")}"; // Пример
+        public string CPUUsagePercent { get; set; } // Реальное значение
+        public string CPUModes => $"PAE: {(HasPAE ? "Да" : "Нет")}, VT-x: {(HasVtX ? "Да" : "Нет")}, NestedPaging: {(HasPAG ? "Да" : "Нет")}";
         public long MemorySizeMB { get; set; }
         public string MemorySize => $"{MemorySizeMB} MB";
         public string HDDSizeGB => $"{(HDDSizeBytes / 1_000_000_000)} GB";
@@ -28,11 +24,9 @@ namespace VBoxWpfApp
         public string StateDescription => VMService.GetMachineStateDescription(State);
         public MachineState State { get; set; }
 
-        public static VmModel FromIMachine(IMachine machine)
+        public static async Task<VmModel> FromIMachine(IMachine machine)
         {
-            // Получаем размер дисков
             ulong totalSize = 0;
-
             foreach (IMediumAttachment attachment in machine.MediumAttachments)
             {
                 if (attachment?.Medium != null && attachment.Medium.DeviceType == DeviceType.DeviceType_HardDisk)
@@ -41,9 +35,6 @@ namespace VBoxWpfApp
                 }
             }
 
-
-
-            // Подсчёт сетевых адаптеров
             int networkCount = 0;
             for (int i = 0; i < 4; i++)
             {
@@ -51,13 +42,12 @@ namespace VBoxWpfApp
                     networkCount++;
             }
 
-            return new VmModel
+            var model = new VmModel
             {
                 Name = machine.Name,
                 Description = machine.Description,
                 OSTypeId = machine.OSTypeId,
                 CPUs = (int)machine.CPUCount,
-                //CPUUsagePercent = 
                 MemorySizeMB = (int)machine.MemorySize,
                 HDDSizeBytes = (long)totalSize,
                 HasPAE = machine.GetCPUProperty(CPUPropertyType.CPUPropertyType_PAE) == 1,
@@ -66,10 +56,23 @@ namespace VBoxWpfApp
                 HasPARAv = machine.GetEffectiveParavirtProvider() == ParavirtProvider.ParavirtProvider_Default,
                 EthernetAdapterCount = networkCount,
                 State = machine.State
-
-                //https://pythonhosted.org/pyvbox/virtualbox/library.html
             };
 
+            // Получение метрик производительности
+            var metrics = await VMService.GetPerformanceMetrics(machine.Name, new[] { "CPU/Load/User", "CPU/Load/Kernel" });
+            if (metrics != null && metrics.ContainsKey("CPU/Load/User"))
+            {
+                var userCpu = (dynamic)metrics["CPU/Load/User"];
+                var kernelCpu = (dynamic)metrics["CPU/Load/Kernel"];
+                var totalCpu = userCpu.Values.LastOrDefault() + kernelCpu.Values.LastOrDefault();
+                model.CPUUsagePercent = $"{totalCpu / userCpu.Scale:F2}%";
+            }
+            else
+            {
+                model.CPUUsagePercent = "N/A";
+            }
+
+            return model;
         }
     }
 }
