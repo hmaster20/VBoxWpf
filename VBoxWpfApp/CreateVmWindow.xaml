@@ -1,0 +1,62 @@
+﻿<Window x:Class="VBoxWpfApp.CreateVmWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Создание виртуальной машины" Height="400" Width="500"
+        WindowStartupLocation="CenterScreen"
+        Style="{DynamicResource WindowStyle}">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Label Content="Имя ВМ:" Grid.Row="0"/>
+        <TextBox x:Name="VmName" Grid.Row="0" Margin="100,0,0,5" Height="25"/>
+
+        <Label Content="Тип ОС:" Grid.Row="1"/>
+        <ComboBox x:Name="OsType" Grid.Row="1" Margin="100,0,0,5" Height="25">
+            <ComboBoxItem Content="Ubuntu_64"/>
+            <ComboBoxItem Content="Windows10_64"/>
+            <ComboBoxItem Content="Debian_64"/>
+        </ComboBox>
+
+        <Label Content="Количество CPU:" Grid.Row="2"/>
+        <TextBox x:Name="CpuCount" Grid.Row="2" Margin="100,0,0,5" Height="25" Text="2"/>
+
+        <Label Content="Объём памяти (МБ):" Grid.Row="3"/>
+        <TextBox x:Name="MemorySize" Grid.Row="3" Margin="100,0,0,5" Height="25" Text="2048"/>
+
+        <Label Content="Размер диска (ГБ):" Grid.Row="4"/>
+        <TextBox x:Name="HddSize" Grid.Row="4" Margin="100,0,0,5" Height="25" Text="20"/>
+
+        <Label Content="Сетевой адаптер:" Grid.Row="5"/>
+        <ComboBox x:Name="NetworkType" Grid.Row="5" Margin="100,0,0,5" Height="25">
+            <ComboBoxItem Content="NAT" Tag="NAT"/>
+            <ComboBoxItem Content="Bridged" Tag="Bridged"/>
+            <ComboBoxItem Content="HostOnly" Tag="HostOnly"/>
+        </ComboBox>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="6" Margin="100,5,0,5">
+            <CheckBox x:Name="HasPAE" Content="PAE" Margin="0,0,10,0" IsChecked="True"/>
+            <CheckBox x:Name="HasVtX" Content="VT-x" Margin="0,0,10,0" IsChecked="True"/>
+            <CheckBox x:Name="HasPAG" Content="Nested Paging" Margin="0,0,10,0" IsChecked="True"/>
+        </StackPanel>
+
+        <Label Content="Количество адаптеров:" Grid.Row="7"/>
+        <TextBox x:Name="EthernetCount" Grid.Row="7" Margin="100,0,0,5" Height="25" Text="1"/>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="9" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="Создать" Click="Create_Click" Width="100" Margin="5"/>
+            <Button Content="Отмена" Click="Cancel_Click" Width="100" Margin="5"/>
+        </StackPanel>
+    </Grid>
+</Window>

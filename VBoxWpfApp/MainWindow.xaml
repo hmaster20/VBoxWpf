@@ -16,51 +16,34 @@
         </Grid.RowDefinitions>
 
         <StackPanel Orientation="Horizontal" Grid.Row="0">
-            <!-- <Button Content="Переключить тему" Click="ToggleTheme_Click" Width="119" Margin="5,5,5,4.8"/> -->
-            <Button Content="Переключить тему" Click="ToggleTheme_Click" HorizontalAlignment="Right" Margin="5"/>
+            <Button Content="Переключить тему" Click="ToggleTheme_Click" Margin="5"/>
+            <Button Content="Создать ВМ" Click="CreateVm_Click" Margin="5"/>
+            <Button Content="Импортировать ВМ" Click="ImportVm_Click" Margin="5"/>
         </StackPanel>
 
         <!-- Фильтры -->
         <StackPanel Orientation="Horizontal" Grid.Row="1">
-
-            <!-- Выбор ВМ -->
             <ComboBox x:Name="MachineList"
-                DisplayMemberPath="Name"
-                ItemsSource="{Binding VmList}"
-                SelectedItem="{Binding SelectedVm, Mode=TwoWay}"
-                SelectionChanged="MachineList_SelectionChanged"
-                Width="300"
-                Grid.Row="1" Margin="5"/>
-
-
-            <!-- <ComboBox x:Name="MachineList" 
-                    DisplayMemberPath="Name" 
-                    SelectedValuePath="Name" 
-                    HorizontalAlignment="Left" 
-                    VerticalAlignment="Top" 
-                    Width="300"
-                    Grid.Row="1" Margin="5"/> -->
-
-            <!-- TextBox с эмуляцией Placeholder -->
+                      DisplayMemberPath="Name"
+                      ItemsSource="{Binding VmList}"
+                      SelectedItem="{Binding SelectedVm, Mode=TwoWay}"
+                      SelectionChanged="MachineList_SelectionChanged"
+                      Width="300"
+                      Margin="5"/>
             <TextBox x:Name="FilterName" 
                      Text="Фильтр по имени..." 
                      GotFocus="FilterName_GotFocus" 
                      LostFocus="FilterName_LostFocus"
                      Width="147" 
                      Margin="5"/>
-
-            <!-- Фильтр по состоянию -->
             <ComboBox x:Name="FilterState" Width="150" Margin="5">
                 <ComboBoxItem Content="Все"/>
                 <ComboBoxItem Content="Запущена"/>
                 <ComboBoxItem Content="Выключена"/>
                 <ComboBoxItem Content="Приостановлена"/>
             </ComboBox>
-
-            <!-- Кнопка фильтрации -->
             <Button Content="Применить фильтр" Click="ApplyFilter_Click" Margin="5"/>
         </StackPanel>
-
 
         <!-- Информация о ВМ -->
         <GroupBox Header="Информация о ВМ" Grid.Row="3" Margin="0,10,0,0">
@@ -70,7 +53,7 @@
                 <TextBlock Text="{Binding SelectedVm.OSTypeId}"/>
                 <TextBlock Text="{Binding SelectedVm.CPUs}"/>
                 <TextBlock Text="{Binding SelectedVm.CPUUsagePercent}"/>
-                <TextBlock Text="{Binding SelectedVm.MemorySizeMB}"/>
+                <TextBlock Text="{Binding SelectedVm.MemorySize}"/>
                 <TextBlock Text="{Binding SelectedVm.HDDSizeGB}"/>
                 <TextBlock Text="{Binding SelectedVm.EthernetCount}"/>
                 <TextBlock Text="Состояние:"/>
@@ -84,7 +67,6 @@
             <Button Content="Остановить" Click="Stop_Click" Width="100" Margin="5"/>
             <Button Content="Приостановить" Click="Pause_Click" Width="100" Margin="5"/>
             <Button Content="Возобновить" Click="Resume_Click" Width="100" Margin="5"/>
-            <!-- <Button Content="Тема: Тёмная" Click="ToggleTheme_Click" Width="120" Margin="5"/> -->
             <ProgressBar x:Name="ProgressIndicator" 
                          IsIndeterminate="True" 
                          Visibility="Collapsed" 
@@ -99,6 +81,5 @@
                  Margin="0,10,0,0"
                  VerticalScrollBarVisibility="Auto"
                  Height="100"/>
-
     </Grid>
 </Window>

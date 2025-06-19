@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using VirtualBox;
@@ -61,7 +62,7 @@ namespace VBoxWpfApp
                 try
                 {
                     machine.LockMachine((Session)session, LockType.LockType_Write);
-                    IProgress progress = machine.LaunchVMProcess((Session)session, "gui", "".ToCharArray());
+                    IProgress progress = machine.LaunchVMProcess((Session)session, "gui", "".ToArray());
                     await WaitForProgress(progress);
                 }
                 finally
@@ -147,7 +148,7 @@ namespace VBoxWpfApp
         /// <summary>
         /// Получение метрик производительности виртуальной машины.
         /// </summary>
-        public static async Task<Dictionary<string, object>> GetPerformanceMetrics(string machineName, string[] metricNames, int period = 1, int sampleCount = 10)
+        public static async Task<Dictionary<string, object>> GetPerformanceMetrics(string machineName, string[] metricNames, int period = 1, uint sampleCount = 10)
         {
             return await Task.Run(() =>
             {
@@ -158,18 +159,30 @@ namespace VBoxWpfApp
 
                     var collector = _virtualBox.PerformanceCollector;
                     var metrics = new Dictionary<string, object>();
-                    collector.SetupMetrics(metricNames, new[] { machine }, period, (uint)sampleCount);
+                    collector.SetupMetrics(metricNames, new[] { machine }, (uint)period, sampleCount);
 
-                    var data = collector.QueryMetricsData(metricNames, new[] { machine });
-                    for (int i = 0; i < data[1].Length; i++)
+                    Array returnMetricNames, returnObjects, returnUnits, returnScales, returnSequenceNumbers, returnDataIndices, returnDataLengths;
+                    var returnData = collector.QueryMetricsData(
+                        metricNames,
+                        new[] { machine },
+                        out returnMetricNames,
+                        out returnObjects,
+                        out returnUnits,
+                        out returnScales,
+                        out returnSequenceNumbers,
+                        out returnDataIndices,
+                        out returnDataLengths
+                    );
+
+                    for (int i = 0; i < returnMetricNames.Length; i++)
                     {
                         var metricData = new
                         {
-                            Name = data[1][i], // Имя метрики
-                            Object = data[2][i], // Объект
-                            Unit = data[3][i], // Единица измерения
-                            Scale = data[4][i], // Масштаб
-                            Values = data[0].Skip(data[5][i]).Take(data[7][i]).ToArray() // Значения
+                            Name = (string)returnMetricNames.GetValue(i),
+                            Object = returnObjects.GetValue(i)?.ToString(),
+                            Unit = (string)returnUnits.GetValue(i),
+                            Scale = Convert.ToInt32(returnScales.GetValue(i)),
+                            Values = returnData.Cast<int>().Skip(Convert.ToInt32(returnDataIndices.GetValue(i))).Take(Convert.ToInt32(returnDataLengths.GetValue(i))).ToArray()
                         };
                         metrics[metricData.Name] = metricData;
                     }
@@ -194,11 +207,14 @@ namespace VBoxWpfApp
                 try
                 {
                     IMachine machine = _virtualBox.CreateMachine(
-                        settingsFile: "",
-                        name: config.Name,
-                        osTypeId: config.OSTypeId,
-                        id: "",
-                        forceOverwrite: false
+                        aSettingsFile: "",
+                        aName: config.Name,
+                        aGroups: new string[] { "" },
+                        aOSTypeId: config.OSTypeId,
+                        aFlags: "",
+                        aCipher: "",
+                        aPasswordId: "",
+                        aPassword: ""
                     );
 
                     // Настройка параметров
@@ -211,11 +227,14 @@ namespace VBoxWpfApp
                     // Настройка жёсткого диска
                     if (config.HDDSizeGB > 0)
                     {
+                        string machineFolder = Path.Combine(_virtualBox.SystemProperties.DefaultMachineFolder, config.Name);
+                        Directory.CreateDirectory(machineFolder);
+
                         IMedium medium = _virtualBox.CreateMedium(
-                            format: "VDI",
-                            location: Path.Combine(_virtualBox.DefaultMachineFolder, config.Name, $"{config.Name}.vdi"),
-                            accessMode: AccessMode.AccessMode_ReadWrite,
-                            aDeviceType: DeviceType.DeviceType_HardDisk
+                            "VDI",
+                            Path.Combine(machineFolder, $"{config.Name}.vdi"),
+                            AccessMode.AccessMode_ReadWrite,
+                            DeviceType.DeviceType_HardDisk
                         );
 
                         IProgress progress = medium.CreateBaseStorage((long)config.HDDSizeGB * 1_000_000_000, new[] { MediumVariant.MediumVariant_Standard });
@@ -230,7 +249,7 @@ namespace VBoxWpfApp
                     {
                         INetworkAdapter adapter = machine.GetNetworkAdapter(i);
                         adapter.Enabled = 1;
-                        adapter.AttachmentType = NetworkAttachmentType.NetworkAttachmentType_NAT;
+                        adapter.AttachmentType = config.NetworkType;
                     }
 
                     machine.SaveSettings();
@@ -275,14 +294,37 @@ namespace VBoxWpfApp
             });
         }
 
-        private static async Task ExecuteAndLog(string name, string action, Func<Task> action)
+        /// <summary>
+        /// Импорт виртуальной машины из OVA/OVF файла.
+        /// </summary>
+        public static async Task ImportVM(string ovaPath, string vmName)
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    IAppliance appliance = _virtualBox.CreateAppliance();
+                    appliance.Read(ovaPath);
+                    IProgress progress = appliance.ImportMachines(new[] { ImportOptions.ImportOptions_KeepAllMACs });
+                    progress.WaitForCompletion(-1);
+                    WriteLog($"ВМ '{vmName}' импортирована из {ovaPath}.");
+                }
+                catch (Exception ex)
+                {
+                    WriteLog($"Ошибка импорта ВМ '{vmName}': {ex.Message}");
+                    throw;
+                }
+            });
+        }
+
+        private static async Task ExecuteAndLog(string name, string actionMessage, Func<Task> actionFunc)
         {
             try
             {
                 await Task.Run(async () =>
                 {
-                    await action();
-                    string msg = $"ВМ '{name}' {action}";
+                    await actionFunc();
+                    string msg = $"ВМ '{name}' {actionMessage}";
                     WriteLog(msg);
                     AppendHistory(msg);
                     ToastHelper.ShowToast(msg);
@@ -290,7 +332,7 @@ namespace VBoxWpfApp
             }
             catch (Exception ex)
             {
-                string errorMsg = $"Ошибка для ВМ '{name}' ({action}): {ex.Message}";
+                string errorMsg = $"Ошибка для ВМ '{name}' ({actionMessage}): {ex.Message}";
                 WriteLog(errorMsg);
                 ToastHelper.ShowToast(errorMsg);
             }
@@ -315,7 +357,7 @@ namespace VBoxWpfApp
             {
                 try
                 {
-                    history = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(HistoryFilePath)) ?? [];
+                    history = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(HistoryFilePath));
                 }
                 catch { }
             }
@@ -324,6 +366,37 @@ namespace VBoxWpfApp
             File.WriteAllText(HistoryFilePath, JsonConvert.SerializeObject(history, Formatting.Indented));
         }
 
+        public static string GetMachineStateDescription(MachineState state)
+        {
+            switch (state)
+            {
+                case MachineState.MachineState_Null: return "Неизвестное состояние";
+                case MachineState.MachineState_PoweredOff: return "Выключена";
+                case MachineState.MachineState_Saved: return "Сохранена";
+                case MachineState.MachineState_Teleported: return "Телепортирована";
+                case MachineState.MachineState_Aborted: return "Аварийно завершена";
+                case MachineState.MachineState_AbortedSaved: return "Аварийно завершена (сохранена)";
+                case MachineState.MachineState_Running: return "Запущена / Онлайн (первое состояние)";
+                case MachineState.MachineState_Paused: return "Приостановлена";
+                case MachineState.MachineState_Stuck: return "Зависла (Guru Meditation)";
+                case MachineState.MachineState_Teleporting: return "Телепортируется / Первое переходное состояние";
+                case MachineState.MachineState_LiveSnapshotting: return "Создание Live-снимка";
+                case MachineState.MachineState_Starting: return "Запускается";
+                case MachineState.MachineState_Stopping: return "Останавливается";
+                case MachineState.MachineState_Saving: return "Сохраняется";
+                case MachineState.MachineState_Restoring: return "Восстанавливается";
+                case MachineState.MachineState_TeleportingPausedVM: return "Телепортируется (пауза)";
+                case MachineState.MachineState_TeleportingIn: return "Входящая телепортация";
+                case MachineState.MachineState_DeletingSnapshotOnline: return "Удаление снимка (в процессе работы)";
+                case MachineState.MachineState_DeletingSnapshotPaused: return "Удаление снимка (на паузе)";
+                case MachineState.MachineState_OnlineSnapshotting: return "Создание снимка онлайн / Последнее онлайн-состояние";
+                case MachineState.MachineState_RestoringSnapshot: return "Восстановление снимка";
+                case MachineState.MachineState_DeletingSnapshot: return "Удаление снимка";
+                case MachineState.MachineState_SettingUp: return "Настройка";
+                case MachineState.MachineState_Snapshotting: return "Создание снимка / Последнее переходное состояние";
+                default: return $"Неизвестное состояние ({state})";
+            }
+        }
 
         private static void WriteLog(string message)
         {
@@ -334,60 +407,6 @@ namespace VBoxWpfApp
             }
             catch { }
         }
-
-        public static string GetMachineStateDescription(MachineState state)
-        {
-            switch (state)
-            {
-                case MachineState.MachineState_Null: return "Неизвестное состояние";
-
-                case MachineState.MachineState_PoweredOff: return "Выключена";
-                case MachineState.MachineState_Saved: return "Сохранена";
-                case MachineState.MachineState_Teleported: return "Телепортирована";
-                case MachineState.MachineState_Aborted: return "Аварийно завершена";
-                case MachineState.MachineState_AbortedSaved: return "Аварийно завершена (сохранена)";
-
-                // Running и FirstOnline имеют одинаковое значение (6)
-                case MachineState.MachineState_Running:
-                    return "Запущена / Онлайн (первое состояние)";
-
-                case MachineState.MachineState_Paused: return "Приостановлена";
-                case MachineState.MachineState_Stuck: return "Зависла (Guru Meditation)";
-
-                // Teleporting и FirstTransient имеют значение 9
-                case MachineState.MachineState_Teleporting:
-                    return "Телепортируется / Первое переходное состояние";
-
-                case MachineState.MachineState_LiveSnapshotting: return "Создание Live-снимка";
-                case MachineState.MachineState_Starting: return "Запускается";
-                case MachineState.MachineState_Stopping: return "Останавливается";
-                case MachineState.MachineState_Saving: return "Сохраняется";
-                case MachineState.MachineState_Restoring: return "Восстанавливается";
-
-                case MachineState.MachineState_TeleportingPausedVM: return "Телепортируется (пауза)";
-                case MachineState.MachineState_TeleportingIn: return "Входящая телепортация";
-
-                case MachineState.MachineState_DeletingSnapshotOnline: return "Удаление снимка (в процессе работы)";
-                case MachineState.MachineState_DeletingSnapshotPaused: return "Удаление снимка (на паузе)";
-
-                // OnlineSnapshotting и LastOnline имеют значение 19
-                case MachineState.MachineState_OnlineSnapshotting:
-                    return "Создание снимка онлайн / Последнее онлайн-состояние";
-
-                case MachineState.MachineState_RestoringSnapshot: return "Восстановление снимка";
-                case MachineState.MachineState_DeletingSnapshot: return "Удаление снимка";
-                case MachineState.MachineState_SettingUp: return "Настройка";
-
-                // Snapshotting и LastTransient имеют значение 23
-                case MachineState.MachineState_Snapshotting:
-                    return "Создание снимка / Последнее переходное состояние";
-
-                default:
-                    return $"Неизвестное состояние ({state})";
-            }
-        }
-
-
     }
 
     /// <summary>
@@ -404,5 +423,6 @@ namespace VBoxWpfApp
         public bool HasVtX { get; set; }
         public bool HasPAG { get; set; }
         public int EthernetAdapterCount { get; set; }
+        public NetworkAttachmentType NetworkType { get; set; } = NetworkAttachmentType.NetworkAttachmentType_NAT;
     }
 }

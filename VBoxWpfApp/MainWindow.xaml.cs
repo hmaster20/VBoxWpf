@@ -1,8 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using Microsoft.Win32;
 
 namespace VBoxWpfApp
 {
@@ -15,13 +19,8 @@ namespace VBoxWpfApp
         {
             InitializeComponent();
             DataContext = this;
-
-            // Установите начальную тему
-            ThemeManager.LoadSavedTheme(); // Загружаем сохранённую тему
-
+            ThemeManager.LoadSavedTheme();
             LoadMachines();
-            //ApplySavedTheme();
-
         }
 
         public List<VmModel> VmList
@@ -44,20 +43,6 @@ namespace VBoxWpfApp
             }
         }
 
-        private void ApplySavedTheme()
-        {
-            string savedTheme = Properties.Settings.Default.Theme ?? "DarkTheme";
-            ThemeManager.ApplyTheme(savedTheme);
-            //ThemeManager.IsDarkTheme = savedTheme == "DarkTheme";
-        }
-
-        private void ToggleTheme_Click(object sender, RoutedEventArgs e)
-        {
-            ThemeManager.ToggleTheme(); // Переключаем тему
-            ThemeManager.SaveCurrentTheme(); // Сохраняем выбор
-        }
-
-
         private async void LoadMachines()
         {
             var machines = await Task.Run(() => VMService.GetAllMachines());
@@ -65,13 +50,12 @@ namespace VBoxWpfApp
             MachineList.ItemsSource = VmList;
         }
 
-
-        private void MachineList_SelectionChanged(object sender, RoutedEventArgs e)
+        private void MachineList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (MachineList.SelectedItem is VmModel selected)
             {
                 SelectedVm = selected;
-                OnPropertyChanged(nameof(SelectedVm)); // Явное обновление
+                OnPropertyChanged(nameof(SelectedVm));
             }
         }
 
@@ -81,7 +65,6 @@ namespace VBoxWpfApp
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
-
 
         private void FilterName_GotFocus(object sender, RoutedEventArgs e)
         {
@@ -97,9 +80,22 @@ namespace VBoxWpfApp
 
         private void ApplyFilter_Click(object sender, RoutedEventArgs e)
         {
-            // Здесь реализуйте логику фильтрации
-        }
+            var filterName = FilterName.Text == "Фильтр по имени..." ? "" : FilterName.Text;
+            var filterState = FilterState.SelectedItem as ComboBoxItem;
 
+            var filtered = VMService.GetAllMachines().AsEnumerable();
+            if (!string.IsNullOrEmpty(filterName))
+            {
+                filtered = filtered.Where(vm => vm.Name.IndexOf(filterName, StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+            if (filterState?.Content.ToString() != "Все")
+            {
+                filtered = filtered.Where(vm => vm.StateDescription == filterState.Content.ToString());
+            }
+
+            VmList = new List<VmModel>(filtered);
+            MachineList.ItemsSource = VmList;
+        }
 
         private async void Start_Click(object sender, RoutedEventArgs e)
         {
@@ -108,7 +104,7 @@ namespace VBoxWpfApp
                 ProgressIndicator.Visibility = Visibility.Visible;
                 await VMService.StartVM(SelectedVm.Name);
                 ProgressIndicator.Visibility = Visibility.Collapsed;
-                LoadMachines(); // Обновляем список
+                LoadMachines();
             }
         }
 
@@ -145,6 +141,48 @@ namespace VBoxWpfApp
             }
         }
 
+        private void CreateVm_Click(object sender, RoutedEventArgs e)
+        {
+            var createVmWindow = new CreateVmWindow();
+            if (createVmWindow.ShowDialog() == true)
+            {
+                LoadMachines();
+            }
+        }
 
+        private async void ImportVm_Click(object sender, RoutedEventArgs e)
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Filter = "OVA/OVF Files (*.ova;*.ovf)|*.ova;*.ovf",
+                Title = "Выберите файл для импорта"
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                ProgressIndicator.Visibility = Visibility.Visible;
+                var vmName = System.IO.Path.GetFileNameWithoutExtension(openFileDialog.FileName);
+                try
+                {
+                    await VMService.ImportVM(openFileDialog.FileName, vmName);
+                    ToastHelper.ShowToast($"ВМ '{vmName}' успешно импортирована.");
+                }
+                catch (Exception ex)
+                {
+                    ToastHelper.ShowToast($"Ошибка импорта: {ex.Message}");
+                }
+                finally
+                {
+                    ProgressIndicator.Visibility = Visibility.Collapsed;
+                    LoadMachines();
+                }
+            }
+        }
+
+        private void ToggleTheme_Click(object sender, RoutedEventArgs e)
+        {
+            ThemeManager.ToggleTheme();
+            ThemeManager.SaveCurrentTheme();
+        }
     }
 }

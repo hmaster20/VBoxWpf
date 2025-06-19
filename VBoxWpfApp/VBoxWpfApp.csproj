@@ -41,6 +41,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -62,10 +63,17 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="CreateVmWindow.xaml.cs">
+      <DependentUpon>CreateVmWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="ThemeManager.cs" />
     <Compile Include="ToastHelper.cs" />
     <Compile Include="VmModel.cs" />
     <Compile Include="VMService.cs" />
+    <Page Include="CreateVmWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
