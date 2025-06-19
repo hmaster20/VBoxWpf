@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System;
+using System.IO;
+using System.Windows;
 
 namespace VBoxWpfApp
 {
@@ -38,13 +40,26 @@ namespace VBoxWpfApp
 
         public static void ApplyTheme(string themeName)
         {
-            var dict = new ResourceDictionary
-            {
-                Source = new System.Uri($"/Themes/{(themeName == "DarkTheme" ? DarkThemeResource : LightThemeResource)}", System.UriKind.Relative)
-            };
+                // Формируем путь к файлу темы
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string themePath = Path.Combine(baseDir, "Themes", $"{themeName}.xaml");
 
-            Application.Current.Resources.MergedDictionaries.Clear();
-            Application.Current.Resources.MergedDictionaries.Add(dict);
+                // Проверяем существование файла
+                if (!File.Exists(themePath))
+                {
+                    MessageBox.Show($"Файл темы не найден: {themePath}");
+                    return;
+                }
+
+                // Загружаем словарь ресурсов
+                var themeDict = new ResourceDictionary
+                {
+                    Source = new Uri(themePath, UriKind.Absolute)
+                    // Source = new System.Uri($"/Themes/{(themeName == "DarkTheme" ? DarkThemeResource : LightThemeResource)}", System.UriKind.Relative)
+                };
+
+                Application.Current.Resources.MergedDictionaries.Clear();
+                Application.Current.Resources.MergedDictionaries.Add(themeDict);
         }
     }
 }

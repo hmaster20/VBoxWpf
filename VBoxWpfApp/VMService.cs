@@ -62,7 +62,7 @@ namespace VBoxWpfApp
                 try
                 {
                     machine.LockMachine((Session)session, LockType.LockType_Write);
-                    IProgress progress = machine.LaunchVMProcess((Session)session, "gui", "".ToArray());
+                    IProgress progress = machine.LaunchVMProcess((Session)session, "gui", new string[0]);
                     await WaitForProgress(progress);
                 }
                 finally
@@ -224,6 +224,9 @@ namespace VBoxWpfApp
                     machine.SetHWVirtExProperty(HWVirtExPropertyType.HWVirtExPropertyType_VPID, config.HasVtX ? 1 : 0);
                     machine.SetHWVirtExProperty(HWVirtExPropertyType.HWVirtExPropertyType_NestedPaging, config.HasPAG ? 1 : 0);
 
+                    // Регистрация машины перед настройкой хранилища
+                    _virtualBox.RegisterMachine(machine);
+
                     // Настройка жёсткого диска
                     if (config.HDDSizeGB > 0)
                     {
@@ -253,7 +256,6 @@ namespace VBoxWpfApp
                     }
 
                     machine.SaveSettings();
-                    _virtualBox.RegisterMachine(machine);
 
                     WriteLog($"Виртуальная машина '{config.Name}' создана.");
                 }
@@ -357,7 +359,11 @@ namespace VBoxWpfApp
             {
                 try
                 {
-                    history = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(HistoryFilePath));
+                    var content = File.ReadAllText(HistoryFilePath);
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        history = JsonConvert.DeserializeObject<List<string>>(content) ?? new List<string>();
+                    }
                 }
                 catch { }
             }
@@ -369,7 +375,7 @@ namespace VBoxWpfApp
         public static string GetMachineStateDescription(MachineState state)
         {
             switch (state)
-            {
+             {
                 case MachineState.MachineState_Null: return "Неизвестное состояние";
                 case MachineState.MachineState_PoweredOff: return "Выключена";
                 case MachineState.MachineState_Saved: return "Сохранена";
@@ -423,6 +429,6 @@ namespace VBoxWpfApp
         public bool HasVtX { get; set; }
         public bool HasPAG { get; set; }
         public int EthernetAdapterCount { get; set; }
-        public NetworkAttachmentType NetworkType { get; set; } = NetworkAttachmentType.NetworkAttachmentType_NAT;
+        public NetworkAttachmentType NetworkType { get; set; }
     }
 }

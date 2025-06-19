@@ -20,7 +20,12 @@ namespace VBoxWpfApp
             InitializeComponent();
             DataContext = this;
             ThemeManager.LoadSavedTheme();
-            LoadMachines();
+            Loaded += MainWindow_Loaded; // Подписка на событие Loaded
+        }
+
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await LoadMachines();
         }
 
         public List<VmModel> VmList
@@ -43,11 +48,19 @@ namespace VBoxWpfApp
             }
         }
 
-        private async void LoadMachines()
+        private async Task LoadMachines()
         {
-            var machines = await Task.Run(() => VMService.GetAllMachines());
-            VmList = new List<VmModel>(machines);
-            MachineList.ItemsSource = VmList;
+            try
+            {
+                ProgressIndicator.Visibility = Visibility.Visible;
+                var machines = await Task.Run(() => VMService.GetAllMachines());
+                VmList = new List<VmModel>(machines);
+                MachineList.ItemsSource = VmList;
+            }
+            finally
+            {
+                ProgressIndicator.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void MachineList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -104,7 +117,7 @@ namespace VBoxWpfApp
                 ProgressIndicator.Visibility = Visibility.Visible;
                 await VMService.StartVM(SelectedVm.Name);
                 ProgressIndicator.Visibility = Visibility.Collapsed;
-                LoadMachines();
+                await LoadMachines();
             }
         }
 
@@ -115,7 +128,7 @@ namespace VBoxWpfApp
                 ProgressIndicator.Visibility = Visibility.Visible;
                 await VMService.StopVM(SelectedVm.Name);
                 ProgressIndicator.Visibility = Visibility.Collapsed;
-                LoadMachines();
+                await LoadMachines();
             }
         }
 
@@ -126,7 +139,7 @@ namespace VBoxWpfApp
                 ProgressIndicator.Visibility = Visibility.Visible;
                 await VMService.PauseVM(SelectedVm.Name);
                 ProgressIndicator.Visibility = Visibility.Collapsed;
-                LoadMachines();
+                await LoadMachines();
             }
         }
 
@@ -137,16 +150,16 @@ namespace VBoxWpfApp
                 ProgressIndicator.Visibility = Visibility.Visible;
                 await VMService.ResumeVM(SelectedVm.Name);
                 ProgressIndicator.Visibility = Visibility.Collapsed;
-                LoadMachines();
+                await LoadMachines();
             }
         }
 
-        private void CreateVm_Click(object sender, RoutedEventArgs e)
+        private async void CreateVm_Click(object sender, RoutedEventArgs e)
         {
             var createVmWindow = new CreateVmWindow();
             if (createVmWindow.ShowDialog() == true)
             {
-                LoadMachines();
+                await LoadMachines();
             }
         }
 
@@ -174,7 +187,7 @@ namespace VBoxWpfApp
                 finally
                 {
                     ProgressIndicator.Visibility = Visibility.Collapsed;
-                    LoadMachines();
+                    await LoadMachines();
                 }
             }
         }
